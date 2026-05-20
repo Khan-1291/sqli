@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}SQL Injection Lab - Home{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="text-align: center; padding: 40px 20px;">
+        <h1 class="section-title" style="font-size: 32px;">🔓 SQL Injection Laboratory</h1>
+        <p class="section-subtitle" style="font-size: 16px; max-width: 600px; margin: 16px auto 32px;">
+            An intentionally vulnerable web application for hands-on cybersecurity training. 
+            Explore 8 different SQL injection vulnerability types in a safe, controlled environment.
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <a href="{{ url_for('docs') }}" class="btn btn-primary">📚 View Documentation & Payloads</a>
+            <a href="{{ url_for('reset_db') }}" class="btn btn-danger">🔄 Reset Database</a>
+        </div>
+    </div>
+</div>
+
+<h2 style="margin: 32px 0 16px; font-size: 20px;">Vulnerable Endpoints</h2>
+<div class="grid">
+    <div class="grid-item">
+        <h3>🔐 /login</h3>
+        <p>Classic SQL Injection — Authentication Bypass via login form string concatenation.</p>
+        <div class="meta">
+            <span class="badge badge-danger">Critical</span>
+            <span class="badge badge-warning">Auth Bypass</span>
+        </div>
+    </div>
+    <div class="grid-item">
+        <h3>🔍 /search</h3>
+        <p>Union-Based SQL Injection — Extract data from multiple tables using UNION SELECT.</p>
+        <div class="meta">
+            <span class="badge badge-danger">Critical</span>
+            <span class="badge badge-warning">Data Extraction</span>
+        </div>
+    </div>
+    <div class="grid-item">
+        <h3>👤 /profile/&lt;id&gt;</h3>
+        <p>Error-Based SQL Injection — Trigger SQL errors to reveal database structure.</p>
+        <div class="meta">
+            <span class="badge badge-danger">High</span>
+            <span class="badge badge-warning">Info Disclosure</span>
+        </div>
+    </div>
+    <div class="grid-item">
+        <h3>📦 /check-order</h3>
+        <p>Boolean-Based Blind SQLi — Infer data by observing True/False page differences.</p>
+        <div class="meta">
+            <span class="badge badge-danger">High</span>
+            <span class="badge badge-warning">Blind</span>
+        </div>
+    </div>
+    <div class="grid-item">
+        <h3>⏱️ /report</h3>
+        <p>Time-Based Blind SQL Injection — Use time delays to extract data bit by bit.</p>
+        <div class="meta">
+            <span class="badge badge-danger">High</span>
+            <span class="badge badge-warning">Blind / Time</span>
+        </div>
+    </div>
+    <div class="grid-item">
+        <h3>📡 /api/stats</h3>
+        <p>Out-of-Band SQL Injection (Simulated) — Data exfiltration via alternative channels.</p>
+        <div class="meta">
+            <span class="badge badge-danger">Medium</span>
+            <span class="badge badge-warning">OOB</span>
+        </div>
+    </div>
+    <div class="grid-item">
+        <h3>💬 /feedback → /admin/feedback</h3>
+        <p>Second-Order SQL Injection — Store payload now, execute later in admin panel.</p>
+        <div class="meta">
+            <span class="badge badge-danger">High</span>
+            <span class="badge badge-warning">Stored</span>
+        </div>
+    </div>
+    <div class="grid-item">
+        <h3>⚡ /admin</h3>
+        <p>Stacked Queries SQL Injection — Execute multiple SQL statements in one request.</p>
+        <div class="meta">
+            <span class="badge badge-danger">Critical</span>
+            <span class="badge badge-warning">Data Modification</span>
+        </div>
+    </div>
+</div>
+
+<h2 style="margin: 32px 0 16px; font-size: 20px;">Secure Comparison Endpoints</h2>
+<div class="grid">
+    <div class="grid-item" style="border-color: var(--success);">
+        <h3 style="color: var(--success);">🛡️ /secure/login</h3>
+        <p>Same login functionality with parameterized queries (prepared statements).</p>
+        <div class="meta">
+            <span class="badge badge-success">Secure</span>
+        </div>
+    </div>
+    <div class="grid-item" style="border-color: var(--success);">
+        <h3 style="color: var(--success);">🛡️ /secure/search</h3>
+        <p>Same search functionality with proper input sanitization and parameterization.</p>
+        <div class="meta">
+            <span class="badge badge-success">Secure</span>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 32px; border-color: var(--warning);">
+    <div class="card-header">
+        <span class="card-title">🎓 Quick Start Guide</span>
+        <span class="badge badge-info">Beginner</span>
+    </div>
+    <ol style="padding-left: 20px; color: var(--text-muted); font-size: 14px; line-height: 2;">
+        <li>Start with <strong>/login</strong> — try <code>admin' --</code> as username</li>
+        <li>Explore <strong>/search</strong> — try <code>' UNION SELECT * FROM users --</code></li>
+        <li>Check <strong>/profile/1</strong> — try <strong>/profile/1'</strong> to trigger errors</li>
+        <li>Visit <strong>/docs</strong> for complete payload reference and testing instructions</li>
+        <li>Compare with <strong>/secure/*</strong> endpoints to see how to fix vulnerabilities</li>
+    </ol>
+</div>
+{% endblock %}

